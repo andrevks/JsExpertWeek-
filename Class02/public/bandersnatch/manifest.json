@@ -5,7 +5,7 @@
     "productionHost":"",
     "codec":"video/mp4; codecs=\"avc1.64001F,mp4a.40.2\"",
     "intro":{
-        "url":"$HOST/timeline/03.intro/01.intro-12.733333-$RESOLUTION.mp4",
+        "url":"$HOST/timeline/01.intro/01.intro-12.733333-$RESOLUTION.mp4",
         "at": 10,
         "options":["Guitarra","Violao"],
         "defaultOption": "Guitarra"
