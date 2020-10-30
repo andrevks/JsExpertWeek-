@@ -1,11 +1,13 @@
 //Everything involving an element of a video will be here
 class VideoMediaPlayer {
-    constructor({ manifestJSON, network }) { 
+    constructor({ manifestJSON, network, videoComponent }) { 
         this.manifestJSON = manifestJSON
         this.network = network
+        this.videoComponent = videoComponent
 
         this.videoElement = null
         this.sourceBuffer = null
+        this.activeItem = {}
         this.selected = {}
         this.videoDuration = 0
     }
@@ -42,11 +44,38 @@ class VideoMediaPlayer {
             //console.log("this.manifestJSON.intro",this.manifestJSON.intro)
             //Prevent run as "live"
             mediaSource.duration = this.videoDuration 
-            console.log("selected.url",selected.url)
+           //console.log("selected.url",selected.url)
             await this.fileDownload(selected.url)
+            setInterval(this.waitForQuestions.bind(this), 200)
         }
     }
 
+    waitForQuestions(){
+        const currentTime = parseInt(this.videoElement.currentTime)
+        const option = this.selected.at === currentTime
+        if(!option) return;
+        // prevent that the model be open twice in the same second
+        if(this.activeItem.url === this.selected.url)return;
+        this.videoComponent.configureModal(this.selected.options)
+        this.activeItem = this.selected
+    }
+    
+    async nextChunk(data) {
+        const key = data.toLowerCase()
+        console.log("key",key)
+        const selected = this.manifestJSON[key]
+        this.selected = {
+            ...selected,
+            //Adjust the time which the model will appears
+            //based in the current time
+            at: parseInt(this.videoElement.currentTime + selected.at)
+        }
+        //let the leftover video playing while downloading the new video
+        this.videoElement.play()
+        await this.fileDownload(selected.url)
+
+
+    }
     async fileDownload(url){
         const prepareUrl = {
             url,
@@ -54,9 +83,9 @@ class VideoMediaPlayer {
             fileResolutionTag: this.manifestJSON.fileResolutionTag,
             hostTag: this.manifestJSON.hostTag
         }
-        console.log("PrepareUrl: ",prepareUrl)
+        //console.log("PrepareUrl: ",prepareUrl)
         const finalUrl = this.network.parseManifestURL(prepareUrl)
-        console.log("finalUrl",finalUrl)
+        //console.log("finalUrl",finalUrl)
         this.setVideoPlayerDuration(finalUrl)
         const data = await this.network.fetchFile(finalUrl)
         return this.processBufferSegments(data)
@@ -64,17 +93,16 @@ class VideoMediaPlayer {
 
     setVideoPlayerDuration(finalURL){
         const bars = finalURL.split('/')
-        console.log("bars: ",bars)
-        console.log("lastPos:", bars[bars.length -1].split('-'))
+        //console.log("bars: ",bars)
+        //console.log("lastPos:", bars[bars.length -1].split('-'))
         const [ name, videoDuration] = bars[bars.length - 1].split('-')
-        console.log("name:",name," videoDuration:",videoDuration)
-        this.videoDuration += videoDuration
-        console.log("videoDuration NOW: ",this.videoDuration)
+        //console.log("name:",name," videoDuration:",videoDuration)
+        this.videoDuration += parseFloat(videoDuration)
+        //console.log("videoDuration NOW: ",this.videoDuration)
     }
 
     async processBufferSegments(allSegments){
         const sourceBuffer = this.sourceBuffer
-        console.log("sourceBuffer",sourceBuffer)
         sourceBuffer.appendBuffer(allSegments) 
          
         return new Promise((resolve, reject) =>{
